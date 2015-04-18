@@ -23,15 +23,11 @@ import re
 from google.appengine.ext import endpoints
 from protorpc import remote
 
+from models import get_endpoints_current_user
 from models import Score
 from tictactoe_api_messages import BoardMessage
-from tictactoe_api_messages import ScoresListRequest
-from tictactoe_api_messages import ScoresListResponse
-from tictactoe_api_messages import ScoreRequestMessage
-from tictactoe_api_messages import ScoreResponseMessage
 
-
-CLIENT_ID = '799945825045-i369npf2366au99ltgel3v3h3t6454sr.apps.googleusercontent.com'
+CLIENT_ID = '799945825045-r3n3ksudh72vbio91uiftj90trsv4k62.apps.googleusercontent.com'
 
 
 @endpoints.api(name='tictactoe', version='v1',
@@ -78,10 +74,8 @@ class TicTacToeApi(remote.Service):
             raise endpoints.BadRequestException('Invalid board.')
         return BoardMessage(state=self.add_move_to_board(board_state))
 
-    @endpoints.method(ScoresListRequest, ScoresListResponse,
-                      path='scores', http_method='GET',
-                      name='scores.list')
-    def scores_list(self, request):
+    @Score.query_method(path='scores', name='scores.list')
+    def scores_list(self, query):
         """Exposes an API endpoint to query for scores for the current user.
 
         Args:
@@ -95,18 +89,11 @@ class TicTacToeApi(remote.Service):
             most recent to least recent. If the API request specifies an order
             of TEXT, the results are ordered by the string value of the scores.
         """
-        query = Score.query_current_user()
-        if request.order == ScoresListRequest.Order.TEXT:
-            query = query.order(Score.outcome)
-        elif request.order == ScoresListRequest.Order.WHEN:
-            query = query.order(-Score.played)
-        items = [entity.to_message() for entity in query.fetch(request.limit)]
-        return ScoresListResponse(items=items)
+        current_user = get_endpoints_current_user()
+        return query.filter(Score.player == current_user).order(-Score.played)
 
-    @endpoints.method(ScoreRequestMessage, ScoreResponseMessage,
-                      path='scores', http_method='POST',
-                      name='scores.insert')
-    def scores_insert(self, request):
+    @Score.method(user_required=True, path='scores', name='scores.insert')
+    def scores_insert(self, score):
         """Exposes an API endpoint to insert a score for the current user.
 
         Args:
@@ -117,8 +104,9 @@ class TicTacToeApi(remote.Service):
             An instance of ScoreResponseMessage containing the score inserted,
             the time the score was inserted and the ID of the score.
         """
-        entity = Score.put_from_message(request)
-        return entity.to_message()
+        score.player = get_endpoints_current_user()
+        score.put()
+        return score
 
 
 APPLICATION = endpoints.api_server([TicTacToeApi],
