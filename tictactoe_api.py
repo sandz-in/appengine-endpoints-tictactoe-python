@@ -31,7 +31,7 @@ from tictactoe_api_messages import ScoreRequestMessage
 from tictactoe_api_messages import ScoreResponseMessage
 
 
-CLIENT_ID = 'YOUR-CLIENT-ID'
+CLIENT_ID = '799945825045-i369npf2366au99ltgel3v3h3t6454sr.apps.googleusercontent.com'
 
 
 @endpoints.api(name='tictactoe', version='v1',
